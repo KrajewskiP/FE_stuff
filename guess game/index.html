@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+    <h1>Guess product</h1>
+    <h3>Hints: <span id="hints"></span> | Chances: <span id="chances"></span></h3>
+
+    <button id="newWord" onclick="data()">New word</button>
+    <button id="showHint" onclick="getHint()" disabled>Show hint</button>
+
+    <p id="word"></p>
+    <p id="answer"></p>
+    <p id="message"></p>
+
+</body>
+</html>
+
+<script>
+    var url = 'https://api.predic8.de/shop/products/';
+    var actualWord = '';
+    var showHintButton = document.getElementById('showHint');
+    var hint = document.getElementById('hints');
+    var chance = document.getElementById('chances');
+    var allowedCharacters = /^[a-z]+$/;
+    var wordElement = document.getElementById('word');
+    var answer = document.getElementById('answer');
+    var numberOfCorrectLetters = 0;
+    var currentNumberOfCorrectLetters = 0;
+    var message = document.getElementById('message');
+
+    const data = () => {
+        let random = Math.trunc(Math.random()*10);
+        fetch(url)
+        .then(response => response.json())
+        .then(payload => payload.products[random].name)
+        .then(data => {
+            setInitial();
+            actualWord = data.toLowerCase();
+            numberOfCorrectLetters = actualWord.length;
+            console.log(actualWord);
+            for (var i = 0; i < actualWord.length; i++) {
+                var letter = document.createElement("input");
+                if (actualWord.charAt(i) === ' ') {
+                    letter.disabled = true;
+                    numberOfCorrectLetters--;
+                }
+                letter.maxLength = 1;
+                letter.id = 'letter' + i;
+                letter.addEventListener('input', inputLetter);
+                wordElement.appendChild(letter)
+ 
+                var ans = document.createElement("span");
+                ans.id = 'answer' + i;
+                ans.innerText = ' ';
+                answer.appendChild(ans);
+            }
+            showHintButton.disabled = false;
+        })
+        .catch(err => console.log(err));
+    }
+
+    window.onload = () => {
+        setInitial();
+    }
+
+    const getHint = () => {
+        let actualValue = parseInt(hint.innerText);
+        useHintLetter();
+        hint.innerText = actualValue - 1;
+        if (hint.innerText == 0) {
+            showHintButton.disabled = true;
+        }
+    }
+
+    const useHintLetter = () => {
+        for (var i = 0; i < actualWord.length; i++) {
+            var letter = document.getElementById('letter' + i);
+            var answer = document.getElementById('answer' + i);
+            let actualLetter = actualWord.charAt(i);
+            if (letter.className != 'correct') {
+                letter.className = 'correct';
+                letter.value = actualLetter;
+                answer.innerText = actualLetter;
+                letter.disabled = true;
+                break;
+            }
+        }
+    }
+
+    const inputLetter = (e) => {
+
+        let letterId = e.target.id;
+        let letterElement = document.getElementById(letterId);
+        let letterValue = letterElement.value.toLowerCase();
+        
+        let position = letterId.substring(6);
+
+        let answerElement = document.getElementById('answer' + position);
+
+        if (!letterValue.match(allowedCharacters)) {
+            letterElement.value = '';
+            return;
+        }
+
+        if (letterValue == actualWord.charAt(position)) {
+            letterElement.className = 'correct';
+            letterElement.disabled = true;
+            answerElement.innerText = letterValue;
+            increasenumberOfCorrectLetters();
+        } else if (actualWord.includes(letterValue)) {
+            letterElement.className = 'wrongPlace';
+            decreaseChance();
+        } else {
+            letterElement.className = 'notExisting';
+            decreaseChance();
+        }
+    }
+
+    const decreaseChance = () => {
+        let actualValue = parseInt(chance.innerText);
+        chance.innerText = actualValue - 1;
+        if (chance.innerText == 0) {
+            disableAllInputs();
+            showHintButton.disabled = true;
+            message.innerText = 'no more chances to guess, try with new word. looking word: ' + actualWord;
+        }
+    }
+
+    const disableAllInputs = () => {
+        wordElement.childNodes.forEach(e => e.disabled = true);
+    }
+
+    const setInitial = () => {
+        wordElement.innerText = '';
+        answer.innerText = '';
+        numberOfCorrectLetters = 0;
+        currentNumberOfCorrectLetters = 0;
+        hint.innerText = '3';
+        chance.innerText = '9';
+        message.innerText = '';
+    }
+
+    const increasenumberOfCorrectLetters = () => {
+        currentNumberOfCorrectLetters++;
+        if (currentNumberOfCorrectLetters == numberOfCorrectLetters) {
+            finishGame();
+        }
+    }
+
+    const finishGame = () => {
+        showHintButton.disabled = true;
+        message.innerText = "Good guess! Click New word button to start new game";
+    }
+
+</script>
+
+<style>
+    input {
+        max-width: 25px;
+        text-transform: uppercase;
+    }
+
+    .correct {
+        color: green;
+    }
+
+    .wrongPlace {
+        color: orange;
+    }
+
+    .notExisting {
+        color: red;
+    }
+
+    #answer span {
+        min-width: 30px;
+        min-height: 20px;
+        margin: 10px;
+        border-bottom: 1px solid black;
+        display: inline-block;
+        text-align: center;
+        text-transform: uppercase;
+    }
+
+</style>
